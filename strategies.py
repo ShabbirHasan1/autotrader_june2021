@@ -6,8 +6,6 @@ class WMA:
     def __init__(self, periods: int, ticks: int):
         self.periods = periods
         self.ticks = ticks
-        # self.period_sum = periods * (periods+1) // 2
-        self.period_sum = periods
         self.n = 0
         self.dq = deque()
         self.wma = 0
@@ -23,18 +21,11 @@ class WMA:
         self.i = 0
 
     def calc_wma(self):
-        weight = 1
-        wma_total = 0
-        # for price in self.dq:
-        #     wma_total += price * weight
-        #     weight += 1
-        # self.wma = wma_total / self.period_sum
         data = list(self.dq)
         df = pd.DataFrame(data, columns=['close'])
         df['open'] = df['close']
         df['high'] = df['close']
         df['low'] = df['close']
-        # df['sma'] = df['close'].rolling(window=self.periods).mean()
         df['sma'] = TA.SMA(df, self.periods)
         self.wma = df['sma'].iloc[-1]
         self.dq.popleft()

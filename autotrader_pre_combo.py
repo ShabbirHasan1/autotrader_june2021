@@ -33,8 +33,7 @@ from ibapi.order import Order
 from ibapi.order_state import OrderState
 from ibapi.execution import Execution
 
-from finta import TA
-from collections import deque
+import strategies
 
 eurusd_contract = Contract()
 REQ_ID_TICK_BY_TICK_DATE = 1
@@ -117,25 +116,10 @@ class TestApp(EWrapper, EClient):
         self.started = False
         self.done = False
         self.position = 0
-        # self.strategy = strategies.WMA(NUM_PERIODS, ticks_per_candle)
+        self.strategy = strategies.WMA(NUM_PERIODS, ticks_per_candle)
         self.last_signal = "NONE"
         self.pending_order = False
         self.tick_count = 0
-        self.periods = NUM_PERIODS
-        self.ticks = ticks_per_candle
-        self.n = 0
-        self.dq = deque()
-        self.wma = 0
-        self.signal = "NONE"
-        self.high = 0
-        self.max_value = 0
-        self.min_value = 0
-        self.atr_value = 0
-        self.wma_target = 0
-        self.target_up = 0
-        self.target_down = 0
-        self.dq1 = deque()
-        self.i = 0
 
 
     def dumpReqAnsErrSituation(self):
@@ -256,52 +240,6 @@ class TestApp(EWrapper, EClient):
         super().tickSize(tickerId, tickType, size)
         print( "Tick Size, Ticker Id:",tickerId,  "tickType:", TickTypeEnum.to_str(tickType),  "Size:", size, file=sys.stderr)
 
-    def calc_wma(self):
-        data = list(self.dq)
-        df = pd.DataFrame(data, columns=['close'])
-        df['open'] = df['close']
-        df['high'] = df['close']
-        df['low'] = df['close']
-        df['sma'] = TA.SMA(df, self.periods)
-        self.wma = df['sma'].iloc[-1]
-        self.dq.popleft()
-
-    def update_signal(self, price: float):
-        self.dq.append(price)
-        self.n += 1
-        if self.n < self.periods:
-            return
-        prev_wma = self.wma
-        self.calc_wma()
-
-        if prev_wma != 0:
-            if self.wma > prev_wma:
-                diff = self.wma - prev_wma
-                self.wma_target = self.wma + diff
-
-            elif self.wma < prev_wma:
-                diff = prev_wma - self.wma
-                self.wma_target = self.wma - diff
-
-        if prev_wma != 0:
-            if self.wma > prev_wma:
-                self.signal = "LONG"
-            elif self.wma < prev_wma:
-                self.signal = "SHRT"
-
-    def find_high(self, price: float):
-        multiplier = 0.5
-        self.dq1.append(price)
-        self.max_value = max(self.dq1)
-        self.min_value = min(self.dq1)
-        self.atr_value = self.max_value - self.min_value
-        self.target_up = self.wma_target + self.atr_value * multiplier
-        self.target_down = self.wma_target - self.atr_value * multiplier
-        self.i += 1
-        if self.i > self.ticks:
-            self.dq1.popleft()
-
-
     def tickByTickAllLast(self, reqId: int, tickType: int, time: int, price: float,
                           size: int, tickAttribLast: TickAttribLast, exchange: str,
                           specialConditions: str):
@@ -311,20 +249,20 @@ class TestApp(EWrapper, EClient):
               "Time:", datetime.datetime.fromtimestamp(time).strftime("%Y%m%d %H:%M:%S"),
               "Price:", "{:.2f}".format(price),
               "Size:", size,
-              "Up Target", "{:.2f}".format(self.target_up),
-              "Down Target", "{:.2f}".format(self.target_down),
-              "WMA:", "{:.2f}".format(self.wma),
-              "WMA_Target", "{:.2f}".format(self.wma_target),
+              "Up Target", "{:.2f}".format(self.strategy.target_up),
+              "Down Target", "{:.2f}".format(self.strategy.target_down),
+              "WMA:", "{:.2f}".format(self.strategy.wma),
+              "WMA_Target", "{:.2f}".format(self.strategy.wma_target),
               # "High", self.strategy.max_value,
               # "Low", self.strategy.min_value,
-              "ATR", self.atr_value,
-              self.signal)
+              "ATR", self.strategy.atr_value,
+              self.strategy.signal)
               # "Tick_List:", self.strategy.dq1,
               # "Current_List:", self.strategy.dq)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
-            self.update_signal(price)
+            self.strategy.update_signal(price)
             self.checkAndSendOrder()
-        self.find_high(price)
+        self.strategy.find_high(price)
         self.tick_count += 1
 
     @iswrapper
@@ -355,22 +293,22 @@ class TestApp(EWrapper, EClient):
               "OrderState:", orderState)
 
     def checkAndSendOrder(self):
-        print(f"Received {self.signal}")
+        print(f"Received {self.strategy.signal}")
         print(f"Last signal {self.last_signal}")
 
-        if self.signal == "NONE" or self.signal == self.last_signal:
+        if self.strategy.signal == "NONE" or self.strategy.signal == self.last_signal:
             print("Doing nothing")
-            self.last_signal = self.signal
+            self.last_signal = self.strategy.signal
             return
 
-        if self.signal == "LONG":
+        if self.strategy.signal == "LONG":
             self.sendOrder("BUY")
-        elif self.signal == "SHRT" and self.last_signal != "NONE":
+        elif self.strategy.signal == "SHRT" and self.last_signal != "NONE":
             self.sendOrder("SELL")
         else:
             print("Don't want to go naked short")
 
-        self.last_signal = self.signal
+        self.last_signal = self.strategy.signal
 
     def sendOrder(self, action):
         order = Order()
