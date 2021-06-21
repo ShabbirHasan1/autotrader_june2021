@@ -39,9 +39,9 @@ from collections import deque
 eurusd_contract = Contract()
 REQ_ID_TICK_BY_TICK_DATE = 1
 
-NUM_PERIODS = 3
+NUM_PERIODS = 9
 ORDER_QUANTITY = 1
-ticks_per_candle = 5
+ticks_per_candle = 144
 
 
 def SetupLogger():
@@ -262,7 +262,7 @@ class TestApp(EWrapper, EClient):
         df['open'] = df['close']
         df['high'] = df['close']
         df['low'] = df['close']
-        df['sma'] = TA.SMA(df, self.periods)
+        df['sma'] = TA.WMA(df, self.periods)
         self.wma = df['sma'].iloc[-1]
         self.dq.popleft()
 
