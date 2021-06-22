@@ -1,32 +1,102 @@
+import mysql.connector
+import csv
+import argparse
+import datetime
+
+import collections
+import inspect
 import logging
+import os.path
+import time
+
 
 import pandas as pd
 import datetime
+from ibapi import wrapper
+from ibapi import utils
+from ibapi.client import EClient
+from ibapi.utils import iswrapper
 
 from ibapi.contract import Contract
+
+
+from ibapi.ticktype import TickType, TickTypeEnum
+from ibapi import wrapper
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
 from ibapi.utils import iswrapper
-
 # types
 from ibapi.common import *  # @UnusedWildImport
+# from ibapi.order import *  # @UnusedWildImport
+
 from ibapi.order import Order
 from ibapi.order_state import OrderState
+from ibapi.execution import Execution
 
 from finta import TA
 from collections import deque
 
-futures_contract = Contract()
-futures_contract.symbol = 'NQ'
-futures_contract.secType = 'FUT'
-futures_contract.exchange = 'GLOBEX'
-futures_contract.currency = 'USD'
-futures_contract.lastTradeDateOrContractMonth = "202109"
-
+eurusd_contract = Contract()
 REQ_ID_TICK_BY_TICK_DATE = 1
+
 NUM_PERIODS = 4
 ORDER_QUANTITY = 1
 ticks_per_candle = 5
+
+
+def SetupLogger():
+    if not os.path.exists("log"):
+        os.makedirs("log")
+
+    time.strftime("pyibapi.%Y%m%d_%H%M%S.log")
+
+    recfmt = '(%(threadName)s) %(asctime)s.%(msecs)03d %(levelname)s %(filename)s:%(lineno)d %(message)s'
+
+    timefmt = '%y%m%d_%H:%M:%S'
+
+    # logging.basicConfig( level=logging.DEBUG,
+    #                    format=recfmt, datefmt=timefmt)
+    logging.basicConfig(filename=time.strftime("log/pyibapi.%y%m%d_%H%M%S.log"),
+                        filemode="w",
+                        level=logging.INFO,
+                        format=recfmt, datefmt=timefmt)
+    logger = logging.getLogger()
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logger.addHandler(console)
+
+
+def printWhenExecuting(fn):
+    def fn2(self):
+        print("   doing", fn.__name__)
+        fn(self)
+        print("   done w/", fn.__name__)
+
+    return fn2
+
+def printinstance(inst:Object):
+    attrs = vars(inst)
+    print(', '.join("%s: %s" % item for item in attrs.items()))
+
+class Activity(Object):
+    def __init__(self, reqMsgId, ansMsgId, ansEndMsgId, reqId):
+        self.reqMsdId = reqMsgId
+        self.ansMsgId = ansMsgId
+        self.ansEndMsgId = ansEndMsgId
+        self.reqId = reqId
+
+
+class RequestMgr(Object):
+    def __init__(self):
+        # I will keep this simple even if slower for now: only one list of
+        # requests finding will be done by linear search
+        self.requests = []
+
+    def addReq(self, req):
+        self.requests.append(req)
+
+    def receivedMsg(self, msg):
+        pass
 
 # ! [socket_init]
 class TestApp(EWrapper, EClient):
@@ -68,6 +138,15 @@ class TestApp(EWrapper, EClient):
         self.dq1 = deque()
         self.i = 0
 
+
+    def dumpReqAnsErrSituation(self):
+        logging.debug("%s\t%s\t%s\t%s" % ("ReqId", "#Req", "#Ans", "#Err"))
+        for reqId in sorted(self.reqId2nReq.keys()):
+            nReq = self.reqId2nReq.get(reqId, 0)
+            nAns = self.reqId2nAns.get(reqId, 0)
+            nErr = self.reqId2nErr.get(reqId, 0)
+            logging.debug("%d\t%d\t%s\t%d" % (reqId, nReq, nAns, nErr))
+
     @iswrapper
     # ! [connectack]
     def connectAck(self):
@@ -104,13 +183,79 @@ class TestApp(EWrapper, EClient):
 
             print("Executing requests ... finished")
 
+    def keyboardInterrupt(self):
+        self.nKeybInt += 1
+        if self.nKeybInt == 1:
+            self.stop()
+        else:
+            print("Finishing test")
+            self.done = True
+
+    def stop(self):
+        print("Executing cancels")
+        # self.orderOperations_cancel()
+        # self.accountOperations_cancel()
+        # self.tickDataOperations_cancel()
+        self.marketDepthOperations_cancel()
+        # self.realTimeBarsOperations_cancel()
+        # self.historicalDataOperations_cancel()
+        # self.optionsOperations_cancel()
+        # self.marketScanners_cancel()
+        # self.fundamentalsOperations_cancel()
+        # self.bulletinsOperations_cancel()
+        # self.newsOperations_cancel()
+        # self.pnlOperations_cancel()
+        # self.histogramOperations_cancel()
+        # self.continuousFuturesOperations_cancel()
+        # self.tickByTickOperations_cancel()
+        print("Executing cancels ... finished")
+
     def nextOrderId(self):
         oid = self.nextValidOrderId
         self.nextValidOrderId += 1
         return oid
 
+    @iswrapper
+    # ! [error]
+    def error(self, reqId: TickerId, errorCode: int, errorString: str):
+        super().error(reqId, errorCode, errorString)
+        print("Error. Id:", reqId, "Code:", errorCode, "Msg:", errorString)
+        errormsg = "IB error id %d errorcode %d string %s" % (reqId, errorCode, errorString)
+        self._my_errors = errormsg
+
+    @iswrapper
+    def winError(self, text: str, lastError: int):
+        super().winError(text, lastError)
+
+
+
+    @printWhenExecuting
     def tickDataOperations_req(self):
-        self.reqTickByTickData(19002, futures_contract, "AllLast", 0, False)
+        # Create contract object
+
+        eurusd_contract.symbol = 'NQ'
+        eurusd_contract.secType = 'FUT'
+        eurusd_contract.exchange = 'GLOBEX'
+        eurusd_contract.currency = 'USD'
+        eurusd_contract.lastTradeDateOrContractMonth = "202109"
+
+        self.reqTickByTickData(19002, eurusd_contract, "AllLast", 0, False)
+
+
+    def historicalData(self, reqId:int, bar: BarData):
+        print("HistoricalData. ReqId:", reqId, "BarData.", bar)
+        logging.debug("ReqId:", reqId, "BarData.", bar)
+
+
+    @iswrapper
+    def tickPrice(self, tickerId: TickerId , tickType: TickType, price: float, attrib):
+        super().tickPrice(tickerId, tickType, price, attrib)
+        print("Tick Price, Ticker Id:", tickerId, "tickType:", TickTypeEnum.to_str(tickType), "Price:", price, " Time:", attrib.time, file=sys.stderr, end= " ")
+
+    @iswrapper
+    def tickSize(self, tickerId: TickerId, tickType: TickType, size: int):
+        super().tickSize(tickerId, tickType, size)
+        print( "Tick Size, Ticker Id:",tickerId,  "tickType:", TickTypeEnum.to_str(tickType),  "Size:", size, file=sys.stderr)
 
     def calc_wma(self):
         data = list(self.dq)
@@ -129,6 +274,7 @@ class TestApp(EWrapper, EClient):
             wma_total += price * weight
             weight += 1
         self.wma = wma_total / self.period_sum
+        self.dq.popleft()
 
     def update_signal(self, price: float):
         self.dq.append(price)
@@ -136,7 +282,7 @@ class TestApp(EWrapper, EClient):
         if self.n < self.periods:
             return
         prev_wma = self.wma
-        self.calc_wma()
+        self.calc_wma_clean()
 
         if prev_wma != 0:
             if self.wma > prev_wma:
@@ -165,6 +311,7 @@ class TestApp(EWrapper, EClient):
         if self.i > self.ticks:
             self.dq1.popleft()
 
+
     def tickByTickAllLast(self, reqId: int, tickType: int, time: int, price: float,
                           size: int, tickAttribLast: TickAttribLast, exchange: str,
                           specialConditions: str):
@@ -182,7 +329,7 @@ class TestApp(EWrapper, EClient):
               # "Low", self.strategy.min_value,
               "ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
-              # "Current_List:", self.dq,
+              "Current_List:", self.dq,
               self.signal)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)
@@ -241,14 +388,36 @@ class TestApp(EWrapper, EClient):
         order.totalQuantity = ORDER_QUANTITY
         order.orderType = "MKT"
         self.pending_order = True
-        self.placeOrder(self.nextOrderId(), futures_contract, order)
+        self.placeOrder(self.nextOrderId(), eurusd_contract, order)
         print(f"Sent a {order.action} order for {order.totalQuantity} shares")
 
 def main():
+    SetupLogger()
+    logging.getLogger().setLevel(logging.ERROR)
+
+    cmdLineParser = argparse.ArgumentParser("api tests")
+    # cmdLineParser.add_option("-c", action="store_True", dest="use_cache", default = False, help = "use the cache")
+    # cmdLineParser.add_option("-f", action="store", type="string", dest="file", default="", help="the input file")
+    cmdLineParser.add_argument("-p", "--port", action="store", type=int,
+                               dest="port", default=7497, help="The TCP port to use")
+    cmdLineParser.add_argument("-C", "--global-cancel", action="store_true",
+                               dest="global_cancel", default=False,
+                               help="whether to trigger a globalCancel req")
+    args = cmdLineParser.parse_args()
+    print("Using args", args)
+    logging.debug("Using args %s", args)
+    # print(args)
+
+    # tc = TestClient(None)
+    # tc.reqMktData(1101, ContractSamples.USStockAtSmart(), "", False, None)
+    # print(tc.reqId2nReq)
+    # sys.exit(1)
     app = TestApp()
     try:
+        if args.global_cancel:
+            app.globalCancelOnly = True
         # ! [connect]
-        app.connect("127.0.0.1", port=7497, clientId=7)
+        app.connect("127.0.0.1", args.port, clientId=7)
         # ! [connect]
         print("serverVersion:%s connectionTime:%s" % (app.serverVersion(),
                                                       app.twsConnectionTime()))
@@ -257,6 +426,7 @@ def main():
         # ! [clientrun]
     except:
         raise
+
 
 if __name__ == "__main__":
     main()
