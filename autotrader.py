@@ -23,11 +23,12 @@ futures_contract.exchange = 'GLOBEX'
 futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
-REQ_ID_TICK_BY_TICK_DATE = 1
-NUM_PERIODS = 9
-ORDER_QUANTITY = 1
-ticks_per_candle = 5
-initial_px = [14258.75, 14267.25, 14268.5]
+REQ_ID_TICK_BY_TICK_DATE = 1 # ID
+NUM_PERIODS = 9 # length
+ORDER_QUANTITY = 1 # number of contracts
+ticks_per_candle = 5 # candle size
+initial_px = [14258.75, 14267.25, 14268.5] # manually obtain closing prices from last few candles from TOS
+# initial_px = []
 
 # ! [socket_init]
 class TestApp(EWrapper, EClient):
@@ -115,12 +116,12 @@ class TestApp(EWrapper, EClient):
         self.reqTickByTickData(19002, futures_contract, "AllLast", 0, False)
 
     def calc_wma(self):
-        data = list(self.dq)
-        df = pd.DataFrame(data, columns=['close'])
+        data = list(self.dq) # convert deque to a list
+        df = pd.DataFrame(data, columns=['close']) #put the list into a dataframe
         df['open'] = df['close']
         df['high'] = df['close']
         df['low'] = df['close']
-        df['sma'] = TA.WMA(df, self.periods)
+        df['sma'] = TA.WMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
         self.dq.popleft()
 
@@ -133,12 +134,14 @@ class TestApp(EWrapper, EClient):
         self.wma = wma_total / self.period_sum
 
     def update_signal(self, price: float):
-        self.dq.append(price)
+        self.dq.append(price) # populate deque with closing prices
         self.n += 1
-        if self.n < self.periods:
+        if self.n < self.periods: # checking the length of deque to make sure it is less than length of indicator
             return
-        prev_wma = self.wma
-        self.calc_wma()
+        prev_wma = self.wma # to calculate slope i store the current value and call it previous value
+        self.calc_wma() # new value - slope is new value - previous value
+
+# ignore this for now
 
         if prev_wma != 0:
             if self.wma > prev_wma:
@@ -149,11 +152,15 @@ class TestApp(EWrapper, EClient):
                 diff = prev_wma - self.wma
                 self.wma_target = self.wma - diff
 
+# this creates a signal - USE THIS
+
         if prev_wma != 0:
-            if self.wma > prev_wma:
+            if self.wma > prev_wma: # indicates moving to a positive slope
                 self.signal = "LONG"
-            elif self.wma < prev_wma:
+            elif self.wma < prev_wma: # indicates moving to a negative slope
                 self.signal = "SHRT"
+
+# ignore this for now
 
     def find_high(self, price: float):
         multiplier = 0.5
@@ -176,7 +183,7 @@ class TestApp(EWrapper, EClient):
               "Time:", datetime.datetime.fromtimestamp(time).strftime("%Y%m%d %H:%M:%S"),
               "Price:", "{:.2f}".format(price),
               "Size:", size,
-              "Up Target", "{:.2f}".format(self.target_up),
+              "Up Target", "{:.2f}".format(self.target_up), # ignore from here
               "Down Target", "{:.2f}".format(self.target_down),
               "WMA:", "{:.2f}".format(self.wma),
               "WMA_Target", "{:.2f}".format(self.wma_target),
@@ -184,13 +191,15 @@ class TestApp(EWrapper, EClient):
               # "Low", self.strategy.min_value,
               "ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
-              "Current_List:", self.dq,
+              # "Current_List:", self.dq, # list of values for length of indicator
               self.signal)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)
             self.checkAndSendOrder()
         self.find_high(price)
         self.tick_count += 1
+
+# reporting order status
 
     @iswrapper
     def orderStatus(self, orderId: OrderId, status: str, filled: float,
@@ -210,6 +219,8 @@ class TestApp(EWrapper, EClient):
               "WhyHeld:", whyHeld,
               "MktCapPrice:", mktCapPrice)
 
+# reporting if there is open order
+
     @iswrapper
     def openOrder(self, orderId: OrderId, contract: Contract, order: Order,
                   orderState: OrderState):
@@ -219,25 +230,27 @@ class TestApp(EWrapper, EClient):
               "Order:", order,
               "OrderState:", orderState)
 
+# here is where we send the trade
+
     def checkAndSendOrder(self):
         print(f"Received {self.signal}")
         print(f"Last signal {self.last_signal}")
 
-        if self.signal == "NONE" or self.signal == self.last_signal:
+        if self.signal == "NONE" or self.signal == self.last_signal: # here we don't keep adding trades w/ each candle
             print("Doing nothing")
             self.last_signal = self.signal
             return
 
-        if self.signal == "LONG":
-            self.sendOrder("BUY")
-        elif self.signal == "SHRT" and self.last_signal != "NONE":
-            self.sendOrder("SELL")
+        if self.signal == "LONG": # check the signal
+            self.sendOrder("BUY") # fire trade
+        elif self.signal == "SHRT" and self.last_signal != "NONE": # check signal
+            self.sendOrder("SELL") # fire trade
         else:
             print("Don't want to go naked short")
 
         self.last_signal = self.signal
 
-    def sendOrder(self, action):
+    def sendOrder(self, action): # defines the order object in the API
         order = Order()
         order.action = action
         order.totalQuantity = ORDER_QUANTITY
@@ -250,7 +263,7 @@ def main():
     app = TestApp()
     try:
         # ! [connect]
-        app.connect("127.0.0.1", port=7497, clientId=7)
+        app.connect("127.0.0.1", port=7497, clientId=7) # make sure you have a different client id for each ticker
         # ! [connect]
         print("serverVersion:%s connectionTime:%s" % (app.serverVersion(),
                                                       app.twsConnectionTime()))
