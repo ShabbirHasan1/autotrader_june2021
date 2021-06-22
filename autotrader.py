@@ -26,7 +26,7 @@ futures_contract.lastTradeDateOrContractMonth = "202109"
 REQ_ID_TICK_BY_TICK_DATE = 1
 NUM_PERIODS = 9
 ORDER_QUANTITY = 1
-ticks_per_candle = 10
+ticks_per_candle = 5
 initial_px = [14258.75, 14267.25, 14268.5]
 
 # ! [socket_init]
@@ -55,7 +55,7 @@ class TestApp(EWrapper, EClient):
         self.periods = NUM_PERIODS
         self.ticks = ticks_per_candle
         self.period_sum = self.periods * (self.periods + 1) // 2
-        self.n = 0
+        self.n = len(initial_px)
         # self.dq = deque()
         self.dq = deque(initial_px)
         self.wma = 0
