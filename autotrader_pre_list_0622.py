@@ -17,7 +17,7 @@ from finta import TA
 from collections import deque
 
 futures_contract = Contract()
-futures_contract.symbol = 'NQ'
+futures_contract.symbol = 'RTY'
 futures_contract.secType = 'FUT'
 futures_contract.exchange = 'GLOBEX'
 futures_contract.currency = 'USD'
@@ -26,8 +26,7 @@ futures_contract.lastTradeDateOrContractMonth = "202109"
 REQ_ID_TICK_BY_TICK_DATE = 1
 NUM_PERIODS = 9
 ORDER_QUANTITY = 1
-ticks_per_candle = 10
-initial_px = [14258.75, 14267.25, 14268.5]
+ticks_per_candle = 16000
 
 # ! [socket_init]
 class TestApp(EWrapper, EClient):
@@ -56,8 +55,7 @@ class TestApp(EWrapper, EClient):
         self.ticks = ticks_per_candle
         self.period_sum = self.periods * (self.periods + 1) // 2
         self.n = 0
-        # self.dq = deque()
-        self.dq = deque(initial_px)
+        self.dq = deque()
         self.wma = 0
         self.signal = "NONE"
         self.high = 0
@@ -184,7 +182,7 @@ class TestApp(EWrapper, EClient):
               # "Low", self.strategy.min_value,
               "ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
-              "Current_List:", self.dq,
+              # "Current_List:", self.dq,
               self.signal)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)

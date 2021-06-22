@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="1a6e1bee-a9c2-4d32-9ec4-2119c983b620" name="Default Changelist" comment="Commit">
-      <change afterPath="$PROJECT_DIR$/autotrader1.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/autotrader_pre_clean_0621.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/autotrader_pre_list_0622.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/autotrader.py" beforeDir="false" afterPath="$PROJECT_DIR$/autotrader.py" afterDir="false" />
     </list>
@@ -127,6 +126,7 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Commit" />
