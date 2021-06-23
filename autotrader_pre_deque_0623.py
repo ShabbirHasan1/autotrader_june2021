@@ -27,8 +27,7 @@ REQ_ID_TICK_BY_TICK_DATE = 1 # ID
 NUM_PERIODS = 9 # length
 ORDER_QUANTITY = 1 # number of contracts
 ticks_per_candle = 1600 # candle size
-initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
-
+initial_px = [14292.5, 14286.5, 14280, 14266.5, 14267.25, 14273.25, 14270.25, 14267.25] # manually obtain closing prices from TOS for n - 1
 # initial_px = []
 
 # ! [socket_init]
@@ -117,8 +116,6 @@ class TestApp(EWrapper, EClient):
         self.reqTickByTickData(19002, futures_contract, "AllLast", 0, False)
 
     def calc_wma(self):
-        while len(self.dq) > self.periods:
-            self.dq.popleft()
         data = list(self.dq) # convert deque to a list
         df = pd.DataFrame(data, columns=['close']) #put the list into a dataframe
         df['open'] = df['close']
@@ -126,6 +123,7 @@ class TestApp(EWrapper, EClient):
         df['low'] = df['close']
         df['sma'] = TA.WMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
+        self.dq.popleft()
 
     # def calc_wma_clean(self):
     #     weight = 1
