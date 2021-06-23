@@ -24,9 +24,9 @@ futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
-NUM_PERIODS = 14 # length
+NUM_PERIODS = 9 # length
 ORDER_QUANTITY = 1 # number of contracts
-ticks_per_candle = 5 # candle size
+ticks_per_candle = 55 # candle size
 # initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
 
 initial_px = []
@@ -61,7 +61,6 @@ class TestApp(EWrapper, EClient):
         # self.dq = deque()
         self.dq = deque(initial_px)
         self.wma = 0
-        self.hma = 0
         self.signal = "NONE"
         self.high = 0
         self.max_value = 0
@@ -125,10 +124,8 @@ class TestApp(EWrapper, EClient):
         df['open'] = df['close']
         df['high'] = df['close']
         df['low'] = df['close']
-        df['sma'] = TA.SMA(df, self.periods) # apply finta function for your favorite indicators
+        df['sma'] = TA.WMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.SMA(df, 8)
-        self.hma = df['hma'].iloc[-1]
 
     # def calc_wma_clean(self):
     #     weight = 1
@@ -145,22 +142,15 @@ class TestApp(EWrapper, EClient):
         if self.n < self.periods: # checking the length of deque to make sure it is less than length of indicator
             return
         prev_wma = self.wma # to calculate slope i store the current value and call it previous value
-        prev_hma = self.hma
         self.calc_wma() # new value - slope is new value - previous value
 
-
 # this creates a signal - USE THIS
-        if prev_wma != 0:
-            if prev_hma < prev_wma and self.hma > self.wma:
-                self.signal = "LONG"
-            elif prev_hma > prev_wma and self.hma < self.wma:
-                self.signal = "SHORT"
 
-        # if prev_wma != 0:
-        #     if self.wma > prev_wma: # indicates moving to a positive slope
-        #         self.signal = "LONG"
-        #     elif self.wma < prev_wma: # indicates moving to a negative slope
-        #         self.signal = "SHRT"
+        if prev_wma != 0:
+            if self.wma > prev_wma: # indicates moving to a positive slope
+                self.signal = "LONG"
+            elif self.wma < prev_wma: # indicates moving to a negative slope
+                self.signal = "SHRT"
 
     # ignore this for now
     def update_target(self):
@@ -200,7 +190,6 @@ class TestApp(EWrapper, EClient):
               #"Up Target", "{:.2f}".format(self.target_up), # ignore from here
               #"Down Target", "{:.2f}".format(self.target_down),
               "WMA:", "{:.2f}".format(self.wma),
-              "HMA:", "{:.2f}".format(self.hma),
               #"WMA_Target", "{:.2f}".format(self.wma_target),
               # "High", self.strategy.max_value,
               # "Low", self.strategy.min_value,
