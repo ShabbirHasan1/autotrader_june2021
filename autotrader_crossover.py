@@ -125,9 +125,9 @@ class TestApp(EWrapper, EClient):
         df['open'] = df['close']
         df['high'] = df['close']
         df['low'] = df['close']
-        df['sma'] = TA.SMA(df, self.periods) # apply finta function for your favorite indicators
+        df['sma'] = TA.EMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.SMA(df, 8)
+        df['hma'] = TA.HMA(df, 8)
         self.hma = df['hma'].iloc[-1]
 
     # def calc_wma_clean(self):
