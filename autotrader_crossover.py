@@ -26,7 +26,7 @@ futures_contract.lastTradeDateOrContractMonth = "202109"
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
 NUM_PERIODS = 14 # length
 ORDER_QUANTITY = 1 # number of contracts
-ticks_per_candle = 5 # candle size
+ticks_per_candle = 10 # candle size
 # initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
 
 initial_px = []
@@ -258,7 +258,7 @@ class TestApp(EWrapper, EClient):
 
         if self.signal == "LONG": # check the signal
             self.sendOrder("BUY") # fire trade or email yourself an alert
-        elif self.signal == "SHRT" and self.last_signal != "NONE": # check signal
+        elif self.signal == "SHORT" and self.last_signal != "NONE": # check signal
             self.sendOrder("SELL") # fire trade or email yourself an alert
         else:
             print("Don't want to go naked short")
