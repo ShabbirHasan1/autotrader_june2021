@@ -3,7 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="1a6e1bee-a9c2-4d32-9ec4-2119c983b620" name="Default Changelist" comment="Commit">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/autotrader_crossover.py" beforeDir="false" afterPath="$PROJECT_DIR$/autotrader_crossover.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/autotrader_slope.py" beforeDir="false" afterPath="$PROJECT_DIR$/autotrader_slope.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,7 +39,7 @@
       <recent name="C:\Users\jsidd\PycharmProjects\autotrader_june2021" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.autotrader_crossover">
+  <component name="RunManager" selected="Python.autotrader_slope">
     <configuration name="autotrader" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="autotrader_june2021" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -147,8 +147,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.autotrader_crossover" />
         <item itemvalue="Python.autotrader_slope" />
+        <item itemvalue="Python.autotrader_crossover" />
         <item itemvalue="Python.autotrader_pre_crossover" />
         <item itemvalue="Python.autotrader" />
         <item itemvalue="Python.autotrader1" />
@@ -234,7 +234,14 @@
       <option name="project" value="LOCAL" />
       <updated>1624539420847</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Commit">
+      <created>1624542195980</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1624542195980</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
