@@ -24,9 +24,10 @@ futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
-NUM_PERIODS = 14 # length
+NUM_PERIODS = 5 # length
 ORDER_QUANTITY = 1 # number of contracts
-ticks_per_candle = 144 # candle size
+TICKS_PER_CANDLE = 8 # candle size
+SHORT_TICKS_PER_CANDLE = 5
 # initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
 
 initial_px = []
@@ -45,7 +46,8 @@ class TestApp(EWrapper, EClient):
         self.simplePlaceOid = None
         self._my_errors = {}
         #self.contract = contract
-        self.ticks_per_candle = ticks_per_candle
+        self.ticks_per_candle = TICKS_PER_CANDLE
+        self.short_ticks_per_candle = SHORT_TICKS_PER_CANDLE
         self.nextValidOrderId = None
         self.started = False
         self.done = False
@@ -55,7 +57,7 @@ class TestApp(EWrapper, EClient):
         self.pending_order = False
         self.tick_count = 0
         self.periods = NUM_PERIODS
-        self.ticks = ticks_per_candle
+        self.ticks = TICKS_PER_CANDLE
         self.period_sum = self.periods * (self.periods + 1) // 2
         self.n = len(initial_px)
         # self.dq = deque()
@@ -71,6 +73,7 @@ class TestApp(EWrapper, EClient):
         self.target_up = 0
         self.target_down = 0
         self.dq1 = deque()
+        self.dq2 = deque()
         self.i = 0
 
     @iswrapper
@@ -148,7 +151,6 @@ class TestApp(EWrapper, EClient):
         prev_hma = self.hma
         self.calc_wma() # new value - slope is new value - previous value
 
-
 # this creates a signal - USE THIS
         if prev_wma != 0:
             if prev_hma < prev_wma and self.hma > self.wma:
@@ -175,6 +177,10 @@ class TestApp(EWrapper, EClient):
 
     # ignore this for now
 
+    def shorter_candle(self, price: float):
+        self.dq2.append(price)
+
+
     def find_high(self, price: float):
         multiplier = 0.5
         self.dq1.append(price)
@@ -187,12 +193,11 @@ class TestApp(EWrapper, EClient):
         if self.i > self.ticks:
             self.dq1.popleft()
 
-    def shorter_candle(self, ):
-
     # print the data
     def tickByTickAllLast(self, reqId: int, tickType: int, time: int, price: float,
                           size: int, tickAttribLast: TickAttribLast, exchange: str,
                           specialConditions: str):
+
         print(#"TickByTickAllLast. ",
               "Candle:", str(self.tick_count // self.ticks_per_candle + 1).zfill(3),
               "Tick:", str(self.tick_count % self.ticks_per_candle + 1).zfill(3),
@@ -201,15 +206,20 @@ class TestApp(EWrapper, EClient):
               #"Size:", size,
               #"Up Target", "{:.2f}".format(self.target_up), # ignore from here
               #"Down Target", "{:.2f}".format(self.target_down),
-              "WMA:", "{:.2f}".format(self.wma),
-              "HMA:", "{:.2f}".format(self.hma),
+              #"WMA:", "{:.2f}".format(self.wma),
+              #"HMA:", "{:.2f}".format(self.hma),
               #"WMA_Target", "{:.2f}".format(self.wma_target),
               # "High", self.strategy.max_value,
               # "Low", self.strategy.min_value,
-              "ATR", self.atr_value,
+              #"ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
               "Current_List:", self.dq, # list of values for length of indicator
+              "Short_List:", self.dq2,  # list of values for length of indicator
               self.signal)
+
+        if self.tick_count % self.short_ticks_per_candle == self.short_ticks_per_candle - 1:
+            self.shorter_candle(price)
+
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)
             self.checkAndSendOrder()
