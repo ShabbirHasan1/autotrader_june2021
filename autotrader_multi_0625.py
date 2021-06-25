@@ -24,9 +24,10 @@ futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
-NUM_PERIODS = 14 # length
+NUM_PERIODS = 5 # length
 ORDER_QUANTITY = 1 # number of contracts
 ticks_per_candle = 8 # candle size
+SHORT_TICKS_PER_CANDLE = 5
 # initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
 
 initial_px = []
@@ -46,6 +47,7 @@ class TestApp(EWrapper, EClient):
         self._my_errors = {}
         #self.contract = contract
         self.ticks_per_candle = ticks_per_candle
+        self.short_ticks_per_candle = SHORT_TICKS_PER_CANDLE
         self.nextValidOrderId = None
         self.started = False
         self.done = False
@@ -71,6 +73,7 @@ class TestApp(EWrapper, EClient):
         self.target_up = 0
         self.target_down = 0
         self.dq1 = deque()
+        self.dq2 = deque()
         self.i = 0
 
     @iswrapper
@@ -117,6 +120,11 @@ class TestApp(EWrapper, EClient):
     def tickDataOperations_req(self):
         self.reqTickByTickData(19002, futures_contract, "AllLast", 0, False)
 
+    def shorter_candle(self, price: float):
+        self.dq2.append(price)
+        while len(self.dq2) > self.periods:
+            self.dq2.popleft()
+
     def calc_wma(self):
         while len(self.dq) > self.periods:
             self.dq.popleft()
@@ -127,7 +135,7 @@ class TestApp(EWrapper, EClient):
         df['low'] = df['close']
         df['sma'] = TA.EMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.HMA(df, 8)
+        df['hma'] = TA.HMA(df, 3)
         self.hma = df['hma'].iloc[-1]
 
     # def calc_wma_clean(self):
@@ -207,10 +215,15 @@ class TestApp(EWrapper, EClient):
               "ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
               "Current_List:", self.dq, # list of values for length of indicator
+              "Fast List:", self.dq2,
               self.signal)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)
             self.checkAndSendOrder()
+
+        if self.tick_count % self.short_ticks_per_candle == self.short_ticks_per_candle - 1:
+            self.shorter_candle(price)
+
         self.find_high(price)
         self.tick_count += 1
 

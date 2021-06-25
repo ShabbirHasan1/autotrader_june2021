@@ -120,18 +120,7 @@ class TestApp(EWrapper, EClient):
     def tickDataOperations_req(self):
         self.reqTickByTickData(19002, futures_contract, "AllLast", 0, False)
 
-    def calc_wma(self):
-        data = list(self.dq) # convert deque to a list
-        df = pd.DataFrame(data, columns=['close']) #put the list into a dataframe
-        df['open'] = df['close']
-        df['high'] = df['close']
-        df['low'] = df['close']
-        df['sma'] = TA.EMA(df, self.periods) # apply finta function for your favorite indicators
-        self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.HMA(df, 8)
-        self.hma = df['hma'].iloc[-1]
-
-    # def calc_wma_clean(self):
+     # def calc_wma_clean(self):
     #     weight = 1
     #     wma_total = 0
     #     for price in self.dq:
@@ -140,12 +129,35 @@ class TestApp(EWrapper, EClient):
     #     self.wma = wma_total / self.period_sum
     #     self.dq.popleft()
 
-    def longer_candle(self, price: float):
-        self.dq.append(price)
+
+    # Create Candles
+    def shorter_candle(self, price: float):
+        self.dq2.append(price)
+        while len(self.dq2) > self.periods:
+            self.dq2.popleft()
+
+    # Calculate Indicators
+
+    def calc_wma(self):
         while len(self.dq) > self.periods:
             self.dq.popleft()
+        data = list(self.dq)  # convert deque to a list
+        df = pd.DataFrame(data, columns=['close'])  # put the list into a dataframe
+        df['open'] = df['close']
+        df['high'] = df['close']
+        df['low'] = df['close']
+        df['sma'] = TA.EMA(df, self.periods)  # apply finta function for your favorite indicators
+        self.wma = df['sma'].iloc[-1]
+        df['hma'] = TA.HMA(df, self.periods)
+        self.hma = df['hma'].iloc[-1]
 
-    def update_signal(self):
+    #Update Signal
+
+    def update_signal(self, price: float):
+        self.dq.append(price)
+        self.n += 1
+        if self.n < self.periods:  # checking the length of deque to make sure it is less than length of indicator
+            return
         prev_wma = self.wma # to calculate slope i store the current value and call it previous value
         prev_hma = self.hma
         self.calc_wma() # new value - slope is new value - previous value
@@ -176,10 +188,6 @@ class TestApp(EWrapper, EClient):
 
     # ignore this for now
 
-    def shorter_candle(self, price: float):
-        self.dq2.append(price)
-        while len(self.dq2) > self.periods:
-            self.dq2.popleft()
 
     def find_high(self, price: float):
         multiplier = 0.5
@@ -206,8 +214,8 @@ class TestApp(EWrapper, EClient):
               #"Size:", size,
               #"Up Target", "{:.2f}".format(self.target_up), # ignore from here
               #"Down Target", "{:.2f}".format(self.target_down),
-              #"WMA:", "{:.2f}".format(self.wma),
-              #"HMA:", "{:.2f}".format(self.hma),
+              "WMA:", "{:.2f}".format(self.wma),
+              "HMA:", "{:.2f}".format(self.hma),
               #"WMA_Target", "{:.2f}".format(self.wma_target),
               # "High", self.strategy.max_value,
               # "Low", self.strategy.min_value,
@@ -221,8 +229,7 @@ class TestApp(EWrapper, EClient):
             self.shorter_candle(price)
 
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
-            self.longer_candle(price)
-            self.update_signal()
+            self.update_signal(price)
             self.checkAndSendOrder()
         self.find_high(price)
         self.tick_count += 1

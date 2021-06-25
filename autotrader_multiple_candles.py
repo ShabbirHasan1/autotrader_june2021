@@ -206,8 +206,8 @@ class TestApp(EWrapper, EClient):
               #"Size:", size,
               #"Up Target", "{:.2f}".format(self.target_up), # ignore from here
               #"Down Target", "{:.2f}".format(self.target_down),
-              #"WMA:", "{:.2f}".format(self.wma),
-              #"HMA:", "{:.2f}".format(self.hma),
+              "WMA:", "{:.2f}".format(self.wma),
+              "HMA:", "{:.2f}".format(self.hma),
               #"WMA_Target", "{:.2f}".format(self.wma_target),
               # "High", self.strategy.max_value,
               # "Low", self.strategy.min_value,
