@@ -75,8 +75,13 @@ class TestApp(EWrapper, EClient):
         self.dq1 = deque()
         self.dq2 = deque()
         self.i = 0
+        self.j = 0
         self.prev_wma = 0
         self.prev_hma = 0
+        self.prev_fast_wma = 0
+        self.fast_wma = 0
+        self.prev_fast_hma = 0
+        self.fast_hma = 0
 
     @iswrapper
     # ! [connectack]
@@ -149,6 +154,29 @@ class TestApp(EWrapper, EClient):
         df['hma'] = TA.SMA(df, 3)
         self.hma = df['hma'].iloc[-1]
 
+    def update_fast_signal(self, price: float):
+        self.dq2.append(price)
+        self.j += 1
+        if self.j < self.periods:
+            return
+        self.prev_fast_wma = self.fast_wma
+        self.prev_fast_hma = self.fast_hma
+        self.calc_fast_wma()
+
+    def calc_fast_wma(self):
+        while len(self.dq2) > self.periods:
+            self.dq2.popleft()
+        data_fast = list(self.dq2) # convert deque to a list
+        df_fast = pd.DataFrame(data_fast, columns=['close']) #put the list into a dataframe
+        df_fast['open'] = df_fast['close']
+        df_fast['high'] = df_fast['close']
+        df_fast['low'] = df_fast['close']
+        df_fast['sma'] = TA.SMA(df_fast, self.periods) # apply finta function for your favorite indicators
+        self.fast_wma = df_fast['sma'].iloc[-1]
+        df_fast['hma'] = TA.SMA(df_fast, 3)
+        self.fast_hma = df_fast['hma'].iloc[-1]
+
+
     # def calc_wma_clean(self):
     #     weight = 1
     #     wma_total = 0
@@ -157,8 +185,6 @@ class TestApp(EWrapper, EClient):
     #         weight += 1
     #     self.wma = wma_total / self.period_sum
     #     self.dq.popleft()
-
-
 
 # this creates a signal - USE THIS
     def decision_engine(self):
@@ -176,13 +202,13 @@ class TestApp(EWrapper, EClient):
 
     # ignore this for now
     def update_target(self):
-        if prev_wma != 0:
-            if self.wma > prev_wma:
-                diff = self.wma - prev_wma
+        if self.prev_wma != 0:
+            if self.wma > self.prev_wma:
+                diff = self.wma - self.prev_wma
                 self.wma_target = self.wma + diff
 
-            elif self.wma < prev_wma:
-                diff = prev_wma - self.wma
+            elif self.wma < self.prev_wma:
+                diff = self.prev_wma - self.wma
                 self.wma_target = self.wma - diff
 
     # ignore this for now
@@ -213,6 +239,8 @@ class TestApp(EWrapper, EClient):
               #"Down Target", "{:.2f}".format(self.target_down),
               "WMA:", "{:.2f}".format(self.wma),
               "HMA:", "{:.2f}".format(self.hma),
+              "Fast_WMA:", "{:.2f}".format(self.fast_wma),
+              "Fast_HMA:", "{:.2f}".format(self.fast_hma),
               #"WMA_Target", "{:.2f}".format(self.wma_target),
               # "High", self.strategy.max_value,
               # "Low", self.strategy.min_value,
@@ -223,12 +251,11 @@ class TestApp(EWrapper, EClient):
               self.signal)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)
+            self.update_fast_signal(price)
             self.decision_engine()
             self.checkAndSendOrder()
-
         if self.tick_count % self.short_ticks_per_candle == self.short_ticks_per_candle - 1:
             self.shorter_candle(price)
-
         self.find_high(price)
         self.tick_count += 1
 
