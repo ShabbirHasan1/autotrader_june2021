@@ -121,6 +121,8 @@ class TestApp(EWrapper, EClient):
         self.reqTickByTickData(19002, futures_contract, "AllLast", 0, False)
 
     def calc_wma(self):
+        while len(self.dq) > self.periods:
+            self.dq.popleft()
         data = list(self.dq) # convert deque to a list
         df = pd.DataFrame(data, columns=['close']) #put the list into a dataframe
         df['open'] = df['close']
@@ -140,12 +142,11 @@ class TestApp(EWrapper, EClient):
     #     self.wma = wma_total / self.period_sum
     #     self.dq.popleft()
 
-    def longer_candle(self, price: float):
-        self.dq.append(price)
-        while len(self.dq) > self.periods:
-            self.dq.popleft()
-
-    def update_signal(self):
+    def update_signal(self, price: float):
+        self.dq.append(price) # populate deque with closing prices
+        self.n += 1
+        if self.n < self.periods: # checking the length of deque to make sure it is less than length of indicator
+            return
         prev_wma = self.wma # to calculate slope i store the current value and call it previous value
         prev_hma = self.hma
         self.calc_wma() # new value - slope is new value - previous value
@@ -213,16 +214,15 @@ class TestApp(EWrapper, EClient):
               # "Low", self.strategy.min_value,
               #"ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
-              f"Slower_Candle {self.ticks_per_candle}:", self.dq, # list of values for length of indicator
-              f"Faster_Candle {self.short_ticks_per_candle}:", self.dq2,  # list of values for length of indicator
+              "Current_List:", self.dq, # list of values for length of indicator
+              "Short_List:", self.dq2,  # list of values for length of indicator
               self.signal)
 
         if self.tick_count % self.short_ticks_per_candle == self.short_ticks_per_candle - 1:
             self.shorter_candle(price)
 
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
-            self.longer_candle(price)
-            self.update_signal()
+            self.update_signal(price)
             self.checkAndSendOrder()
         self.find_high(price)
         self.tick_count += 1
