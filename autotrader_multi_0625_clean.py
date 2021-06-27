@@ -24,9 +24,9 @@ futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
-NUM_PERIODS = 5 # length
+NUM_PERIODS = 9 # length
 ORDER_QUANTITY = 1 # number of contracts
-ticks_per_candle = 8 # candle size
+ticks_per_candle = 144 # candle size
 SHORT_TICKS_PER_CANDLE = 5
 # initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
 
@@ -57,7 +57,6 @@ class TestApp(EWrapper, EClient):
         self.pending_order = False
         self.tick_count = 0
         self.periods = NUM_PERIODS
-        self.ticks = ticks_per_candle
         self.period_sum = self.periods * (self.periods + 1) // 2
         self.n = len(initial_px)
         # self.dq = deque()
@@ -149,9 +148,9 @@ class TestApp(EWrapper, EClient):
         df['open'] = df['close']
         df['high'] = df['close']
         df['low'] = df['close']
-        df['sma'] = TA.SMA(df, self.periods) # apply finta function for your favorite indicators
+        df['sma'] = TA.WMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.SMA(df, 3)
+        df['hma'] = TA.EMA(df, 8)
         self.hma = df['hma'].iloc[-1]
 
     def update_fast_signal(self, price: float):
@@ -200,7 +199,7 @@ class TestApp(EWrapper, EClient):
         #     elif self.wma < prev_wma: # indicates moving to a negative slope
         #         self.signal = "SHRT"
 
-    # ignore this for now
+    # ignore this for now - it forecasts next wma value
     def update_target(self):
         if self.prev_wma != 0:
             if self.wma > self.prev_wma:
@@ -214,15 +213,15 @@ class TestApp(EWrapper, EClient):
     # ignore this for now
 
     def find_high(self, price: float):
-        multiplier = 0.5
+        multiplier = 1
         self.dq1.append(price)
         self.max_value = max(self.dq1)
         self.min_value = min(self.dq1)
         self.atr_value = self.max_value - self.min_value
-        self.target_up = self.wma_target + self.atr_value * multiplier
-        self.target_down = self.wma_target - self.atr_value * multiplier
+        self.target_up = self.wma + self.atr_value * multiplier
+        self.target_down = self.wma - self.atr_value * multiplier
         self.i += 1
-        if self.i > self.ticks:
+        if self.i > self.ticks_per_candle:
             self.dq1.popleft()
 
     # print the data
@@ -235,8 +234,8 @@ class TestApp(EWrapper, EClient):
               "Time:", datetime.datetime.fromtimestamp(time).strftime("%Y%m%d %H:%M:%S"),
               "Price:", "{:.2f}".format(price),
               #"Size:", size,
-              #"Up Target", "{:.2f}".format(self.target_up), # ignore from here
-              #"Down Target", "{:.2f}".format(self.target_down),
+              "Up Target", "{:.2f}".format(self.target_up),
+              "Down Target", "{:.2f}".format(self.target_down),
               "WMA:", "{:.2f}".format(self.wma),
               "HMA:", "{:.2f}".format(self.hma),
               "Fast_WMA:", "{:.2f}".format(self.fast_wma),
@@ -246,8 +245,8 @@ class TestApp(EWrapper, EClient):
               # "Low", self.strategy.min_value,
               "ATR", self.atr_value,
               # "Tick_List:", self.strategy.dq1,
-              "Current_List:", self.dq, # list of values for length of indicator
-              "Fast List:", self.dq2,
+              # "Current_List:", self.dq, # list of values for length of indicator
+              # "Fast List:", self.dq2,
               self.signal)
         if self.tick_count % self.ticks_per_candle == self.ticks_per_candle - 1:
             self.update_signal(price)
