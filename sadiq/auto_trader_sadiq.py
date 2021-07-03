@@ -24,11 +24,12 @@ futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
-NUM_PERIODS = 9 # length
+NUM_PERIODS = 13 # length (used for WMA, fib nummber 8, 13, 21)
 ORDER_QUANTITY = 1 # number of contracts
-ticks_per_candle = 144 # candle size
-SHORT_TICKS_PER_CANDLE = 5
-# initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
+ticks_per_candle = 133 # candle size (fib number 144,233,377,610)
+SHORT_TICKS_PER_CANDLE = 89 # candle size (fib number 34, 55, 89)
+
+#initial_px = [14580, 14566.5, 14567.5, 14573.25, 14570.5, 14566.75, 14552.5, 14564.5, 14567.75] # manually obtain closing prices from TOS for n
 
 initial_px = []
 
@@ -71,12 +72,14 @@ class TestApp(EWrapper, EClient):
         self.wma_target = 0
         self.target_up = 0
         self.target_down = 0
-        self.dq1 = deque()
-        self.dq2 = deque()
+        self.dq1 = deque(initial_px)
+        self.dq2 = deque(initial_px)
         self.i = 0
         self.j = 0
         self.prev_wma = 0
         self.prev_hma = 0
+        self.intra_candle_wma = 0
+        self.intra_candle_hma = 0
         self.prev_fast_wma = 0
         self.fast_wma = 0
         self.prev_fast_hma = 0
@@ -135,6 +138,8 @@ class TestApp(EWrapper, EClient):
         self.dq.append(price) # populate deque with closing prices
         self.n += 1
         if self.n < self.periods: # checking the length of deque to make sure it is less than length of indicator
+            self.intra_candle_wma = self.wma
+            self.intra_candle_hma = self.hma
             return
         self.prev_wma = self.wma # to calculate slope i store the current value and call it previous value
         self.prev_hma = self.hma
@@ -149,8 +154,8 @@ class TestApp(EWrapper, EClient):
         df['high'] = df['close']
         df['low'] = df['close']
         df['sma'] = TA.WMA(df, self.periods) # apply finta function for your favorite indicators
-        self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.EMA(df, 8)
+        self.wma = df['sma'].iloc[-1] #-1 selects till the second last column of the df instead of the last column
+        df['hma'] = TA.HMA(df, 8)
         self.hma = df['hma'].iloc[-1]
 
     def update_fast_signal(self, price: float):
@@ -170,9 +175,9 @@ class TestApp(EWrapper, EClient):
         df_fast['open'] = df_fast['close']
         df_fast['high'] = df_fast['close']
         df_fast['low'] = df_fast['close']
-        df_fast['sma'] = TA.SMA(df_fast, self.periods) # apply finta function for your favorite indicators
+        df_fast['sma'] = TA.WMA(df_fast, self.periods) # apply finta function for your favorite indicators
         self.fast_wma = df_fast['sma'].iloc[-1]
-        df_fast['hma'] = TA.SMA(df_fast, 3)
+        df_fast['hma'] = TA.HMA(df_fast, 8)
         self.fast_hma = df_fast['hma'].iloc[-1]
 
 
@@ -190,8 +195,13 @@ class TestApp(EWrapper, EClient):
         if self.prev_wma != 0:
             if self.prev_hma < self.prev_wma and self.hma > self.wma:
                 self.signal = "LONG"
-            elif self.prev_hma > self.prev_wma and self.hma < self.wma:
+            elif self.prev_fast_hma > self.prev_fast_wma and self.fast_hma < self.fast_wma:
                 self.signal = "SHORT"
+
+        #  if self.prev_hma < self.prev_wma and self.hma > self.wma:
+        #     self.signal = "LONG"
+        #  elif self.prev_hma > self.prev_wma and self.fast_hma < self.fast_hma:
+        #      self.signal = "SHORT"
 
         # if prev_wma != 0:
         #     if self.wma > prev_wma: # indicates moving to a positive slope
@@ -236,6 +246,8 @@ class TestApp(EWrapper, EClient):
               #"Size:", size,
               "Up Target", "{:.2f}".format(self.target_up),
               "Down Target", "{:.2f}".format(self.target_down),
+              "IC-WMA:", "{:.2f}".format(self.intra_candle_wma),
+              "IC-HMA:", "{:.2f}".format(self.intra_candle_hma),
               "WMA:", "{:.2f}".format(self.wma),
               "HMA:", "{:.2f}".format(self.hma),
               "Fast_WMA:", "{:.2f}".format(self.fast_wma),
@@ -322,7 +334,7 @@ def main():
     app = TestApp()
     try:
         # ! [connect]
-        app.connect("127.0.0.1", port=7497, clientId=7) # make sure you have a different client id for each ticker
+        app.connect("127.0.0.1", port=7497, clientId=3) # make sure you have a different client id for each ticker
         # ! [connect]
         print("serverVersion:%s connectionTime:%s" % (app.serverVersion(),
                                                       app.twsConnectionTime()))

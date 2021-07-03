@@ -24,10 +24,10 @@ futures_contract.currency = 'USD'
 futures_contract.lastTradeDateOrContractMonth = "202109"
 
 REQ_ID_TICK_BY_TICK_DATE = 1 # ID
-NUM_PERIODS = 9 # length
+NUM_PERIODS = 13 # length
 ORDER_QUANTITY = 1 # number of contracts
-ticks_per_candle = 144 # candle size
-SHORT_TICKS_PER_CANDLE = 5
+ticks_per_candle = 133 # candle size
+SHORT_TICKS_PER_CANDLE = 89
 # initial_px = [14280, 14266.5, 14267.5, 14273.25, 14270.5, 14266.75, 14252.5, 14264.5, 14267.75] # manually obtain closing prices from TOS for n
 
 initial_px = []
@@ -150,7 +150,7 @@ class TestApp(EWrapper, EClient):
         df['low'] = df['close']
         df['sma'] = TA.WMA(df, self.periods) # apply finta function for your favorite indicators
         self.wma = df['sma'].iloc[-1]
-        df['hma'] = TA.EMA(df, 8)
+        df['hma'] = TA.HMA(df, 8)
         self.hma = df['hma'].iloc[-1]
 
     def update_fast_signal(self, price: float):
@@ -170,9 +170,9 @@ class TestApp(EWrapper, EClient):
         df_fast['open'] = df_fast['close']
         df_fast['high'] = df_fast['close']
         df_fast['low'] = df_fast['close']
-        df_fast['sma'] = TA.SMA(df_fast, self.periods) # apply finta function for your favorite indicators
+        df_fast['sma'] = TA.WMA(df_fast, self.periods) # apply finta function for your favorite indicators
         self.fast_wma = df_fast['sma'].iloc[-1]
-        df_fast['hma'] = TA.SMA(df_fast, 3)
+        df_fast['hma'] = TA.HMA(df_fast, 8)
         self.fast_hma = df_fast['hma'].iloc[-1]
 
 
@@ -190,7 +190,7 @@ class TestApp(EWrapper, EClient):
         if self.prev_wma != 0:
             if self.prev_hma < self.prev_wma and self.hma > self.wma:
                 self.signal = "LONG"
-            elif self.prev_hma > self.prev_wma and self.hma < self.wma:
+            elif self.prev_fast_hma > self.prev_fast_wma and self.fast_hma < self.fast_wma:
                 self.signal = "SHORT"
 
         # if prev_wma != 0:

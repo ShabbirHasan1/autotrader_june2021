@@ -2,6 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="1a6e1bee-a9c2-4d32-9ec4-2119c983b620" name="Default Changelist" comment="Commit">
+      <change afterPath="$PROJECT_DIR$/autotrader_0703.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sadiq/auto_trader_0703.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sadiq/auto_trader_sadiq.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/autotrader_multi_0625_clean.py" beforeDir="false" afterPath="$PROJECT_DIR$/autotrader_multi_0625_clean.py" afterDir="false" />
     </list>
@@ -31,12 +34,14 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/sadiq/auto_trader_sadiq.py" />
     <property name="settings.editor.selected.configurable" value="vcs.Git" />
+    <property name="two.files.diff.last.used.file" value="$PROJECT_DIR$/sadiq/auto_trader_sadiq.py" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\jsidd\PycharmProjects\autotrader_june2021" />
+      <recent name="C:\Users\jsidd\PycharmProjects\autotrader_june2021\sadiq" />
     </key>
   </component>
   <component name="RunManager" selected="Python.autotrader_multi_0625_clean">
@@ -297,7 +302,14 @@
       <option name="project" value="LOCAL" />
       <updated>1624640970247</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="Commit">
+      <created>1624799903032</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1624799903032</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
